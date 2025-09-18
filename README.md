@@ -350,6 +350,8 @@ python test_gmail_api.py
 🎉 所有测试都通过了！Gmail MCP Server 运行正常。
 ```
 
+> 📖 **详细测试指南**：查看 [TESTING.md](TESTING.md) 了解更多测试选项、故障排除和最佳实践。
+
 ### 响应格式示例
 
 #### 邮件列表响应
@@ -467,7 +469,8 @@ project/
 ├── test_gmail_api.py   # Python完整测试脚本
 ├── requirements.txt    # Python依赖
 ├── README.md           # 项目说明
-└── SETUP_GUIDE.md      # 详细设置指南
+├── SETUP_GUIDE.md      # 详细设置指南
+└── TESTING.md          # 测试指南
 ```
 
 ### 添加新功能

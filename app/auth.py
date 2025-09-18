@@ -72,20 +72,48 @@ class TokenManager:
             return None
         
         cred_data = token_data["google_credentials"]
-        credentials = Credentials(
-            token=cred_data["token"],
-            refresh_token=cred_data["refresh_token"],
-            token_uri=cred_data["token_uri"],
-            client_id=cred_data["client_id"],
-            client_secret=cred_data["client_secret"],
-            scopes=cred_data["scopes"]
-        )
         
-        # 如果token过期，尝试刷新
-        if credentials.expired and credentials.refresh_token:
-            credentials.refresh(Request())
-            # 更新存储的token
-            self.tokens[token]["google_credentials"]["token"] = credentials.token
+        # 检查是否是测试凭据（没有真实的refresh_token）
+        if cred_data.get("refresh_token") == "test-refresh-token":
+            # 创建测试凭据类，不会尝试刷新
+            class TestCredentials(Credentials):
+                def refresh(self, request):
+                    # 不执行刷新，直接返回
+                    pass
+                
+                @property
+                def expired(self):
+                    # 总是返回False，表示未过期
+                    return False
+                
+                def apply(self, headers, token=None):
+                    # 直接应用token到headers，不检查过期
+                    headers['authorization'] = f'Bearer {self.token}'
+            
+            credentials = TestCredentials(
+                token=cred_data["token"],
+                refresh_token=cred_data["refresh_token"],
+                token_uri=cred_data["token_uri"],
+                client_id=cred_data["client_id"],
+                client_secret=cred_data["client_secret"],
+                scopes=cred_data["scopes"]
+            )
+        else:
+            # 正常的生产凭据
+            credentials = Credentials(
+                token=cred_data["token"],
+                refresh_token=cred_data["refresh_token"],
+                token_uri=cred_data["token_uri"],
+                client_id=cred_data["client_id"],
+                client_secret=cred_data["client_secret"],
+                scopes=cred_data["scopes"]
+            )
+            
+            # 如果token过期，尝试刷新
+            if credentials.expired and credentials.refresh_token:
+                credentials.refresh(Request())
+                # 更新存储的token
+                self.tokens[token]["google_credentials"]["token"] = credentials.token
         
         return credentials
 

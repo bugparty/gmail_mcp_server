@@ -267,6 +267,64 @@ async def get_mcp_tools():
     
     return MCPResponse(tools=tools)
 
+@app.post("/test/generate-token")
+async def generate_test_token(request: Request):
+    """生成测试用的JWT token（仅用于测试环境）"""
+    if not settings.DEBUG:
+        raise HTTPException(status_code=404, detail="Not found")
+    
+    try:
+        # 从请求体获取Google token
+        body = await request.json()
+        google_token = body.get("google_token")
+        user_email = body.get("user_email", "test@example.com")
+        
+        if not google_token:
+            raise HTTPException(status_code=400, detail="google_token is required")
+        
+        # 创建测试用的Google凭据
+        from google.oauth2.credentials import Credentials
+        from datetime import datetime, timedelta
+        
+        # 创建一个测试凭据类，重写refresh方法
+        class TestCredentials(Credentials):
+            def refresh(self, request):
+                # 不执行刷新，直接返回
+                print("TestCredentials.refresh called - skipping")
+                pass
+            
+            @property
+            def expired(self):
+                # 总是返回False，表示未过期
+                return False
+            
+            def apply(self, headers, token=None):
+                # 直接应用token到headers，不检查过期
+                headers['authorization'] = f'Bearer {self.token}'
+        
+        # 创建测试凭据对象
+        credentials = TestCredentials(
+            token=google_token,
+            refresh_token="test-refresh-token",  # 提供测试值
+            token_uri="https://oauth2.googleapis.com/token",
+            client_id=settings.GOOGLE_CLIENT_ID or "test-client-id",
+            client_secret=settings.GOOGLE_CLIENT_SECRET or "test-client-secret",
+            scopes=settings.GMAIL_SCOPES,
+            expiry=datetime.utcnow() + timedelta(hours=24)
+        )
+        
+        # 生成API token
+        api_token = token_manager.generate_api_token(user_email, credentials)
+        
+        return {
+            "api_token": api_token,
+            "user_email": user_email,
+            "expires_in": settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.get("/health")
 async def health_check():
     """健康检查"""
